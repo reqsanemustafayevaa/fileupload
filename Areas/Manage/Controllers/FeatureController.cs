@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Pustok_Crud2.DAL;
+using Pustok_Crud2.Extentions;
 using Pustok_Crud2.Models;
 
 namespace Pustok_Crud2.Areas.Manage.Controllers
@@ -10,10 +11,13 @@ namespace Pustok_Crud2.Areas.Manage.Controllers
         
 
         private readonly AppDbContext _context;
-        public FeatureController(AppDbContext Context)
+        private readonly IWebHostEnvironment _environment;
+        public FeatureController(AppDbContext Context, IWebHostEnvironment environment)
         {
             _context = Context;
+            _environment = environment;
         }
+
         public IActionResult Index()
         {
             List<Feature> features =_context.Features.ToList();
@@ -31,6 +35,26 @@ namespace Pustok_Crud2.Areas.Manage.Controllers
             {
 
                 return View();
+            }
+            if (feature.FileImage != null)
+            {
+                if (feature.FileImage.ContentType != "image/jpeg" && feature.FileImage.ContentType != "image/png")
+                {
+                    ModelState.AddModelError("ImageFile", "File must be .png or ,jpeg(.jpg)");
+                    return View(feature);
+
+                }
+                if (feature.FileImage.Length > 2097152)
+                {
+                    ModelState.AddModelError("FileImage", "File size must be lower than 2mb");
+                    return View(feature);
+                }
+                feature.Image = Helper.SaveFile(_environment.WebRootPath, "uploads/sliders", feature.FileImage);
+            }
+            else
+            {
+                ModelState.AddModelError("FileImage", "Required");
+                return View(feature);
             }
             _context.Features.Add(feature);
             _context.SaveChanges();
@@ -56,6 +80,29 @@ namespace Pustok_Crud2.Areas.Manage.Controllers
             if (existfeature == null)
             {
                 return NotFound();
+            }
+            if (feature.FileImage != null)
+            {
+                if (feature.FileImage.ContentType != "image/jpeg" && feature.FileImage.ContentType != "image/png")
+                {
+                    ModelState.AddModelError("FileImage", "File must be .png or ,jpeg(.jpg)");
+                    return View(feature);
+
+                }
+                if (feature.FileImage.Length > 2097152)
+                {
+                    ModelState.AddModelError("FileImage", "File size must be lower than 2mb");
+                    return View(feature);
+                }
+                string deletePath = Path.Combine(_environment.WebRootPath, "uploads/Sliders", existfeature.Image);
+
+                if (System.IO.File.Exists(deletePath))
+                {
+                    System.IO.File.Delete(deletePath);
+                }
+                existfeature.Image = Helper.SaveFile(_environment.WebRootPath, "uploads/Sliders", feature.FileImage);
+
+
             }
 
             existfeature.Title= feature.Title;
